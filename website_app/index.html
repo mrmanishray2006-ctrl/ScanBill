@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuickBill QR - Retail Billing & Subscription System</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+  <!-- jsPDF for PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- qrcode.js for QR code generation -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <!-- canvas-confetti for payment completion -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- jsQR for camera QR scanning -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- LEFT PANEL: OWNER DASHBOARD -->
+    <main class="owner-panel">
+      <header class="owner-header">
+        <div class="logo-area">
+          <div class="logo-icon">
+            <i data-lucide="qr-code"></i>
+          </div>
+          <div>
+            <h1>QuickBill QR</h1>
+            <p class="subtitle">Merchant Dashboard</p>
+          </div>
+        </div>
+        <div class="store-badge">
+          <i data-lucide="store" class="icon-sm"></i>
+          <span id="active-store-name">SuperMart Express</span>
+        </div>
+      </header>
+
+      <div class="owner-workspace">
+        <!-- Sidebar Navigation -->
+        <aside class="owner-sidebar">
+          <nav class="sidebar-nav">
+            <button class="nav-btn active" data-tab="dashboard">
+              <i data-lucide="layout-dashboard"></i>
+              <span>Overview</span>
+            </button>
+            <button class="nav-btn" data-tab="products">
+              <i data-lucide="package"></i>
+              <span>Products</span>
+            </button>
+            <button class="nav-btn" data-tab="qr-exporter">
+              <i data-lucide="printer"></i>
+              <span>QR Exporter</span>
+            </button>
+            <button class="nav-btn" data-tab="payouts">
+              <i data-lucide="wallet"></i>
+              <span>Payouts</span>
+            </button>
+            <button class="nav-btn" data-tab="subscriptions">
+              <i data-lucide="credit-card"></i>
+              <span>Subscriptions</span>
+            </button>
+            <button class="nav-btn" data-tab="settings">
+              <i data-lucide="settings"></i>
+              <span>Settings</span>
+            </button>
+          </nav>
+
+          <!-- Owner Profile Summary -->
+          <div class="sidebar-footer">
+            <div class="kyc-status verified">
+              <i data-lucide="shield-check"></i>
+              <span>KYC Verified</span>
+            </div>
+            <div class="owner-sub-info">
+              <p class="plan-label">Active Plan</p>
+              <p class="plan-name" id="sidebar-plan-name">Pro Shop (Monthly)</p>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Main Dashboard View Area -->
+        <section class="owner-content">
+          <!-- TAB 1: OVERVIEW -->
+          <div class="tab-pane active" id="tab-dashboard">
+            <div class="grid-stats">
+              <div class="stat-card">
+                <div class="stat-header">
+                  <span class="stat-title">Total Sales (INR)</span>
+                  <div class="stat-icon sales"><i data-lucide="trending-up"></i></div>
+                </div>
+                <div class="stat-value" id="stat-total-sales">₹0.00</div>
+                <p class="stat-desc"><span class="trend-up">+12.5%</span> vs last week</p>
+              </div>
+              <div class="stat-card">
+                <div class="stat-header">
+                  <span class="stat-title">Total Orders</span>
+                  <div class="stat-icon orders"><i data-lucide="shopping-bag"></i></div>
+                </div>
+                <div class="stat-value" id="stat-total-orders">0</div>
+                <p class="stat-desc"><span class="trend-up" id="stat-orders-today">0 today</span></p>
+              </div>
+              <div class="stat-card">
+                <div class="stat-header">
+                  <span class="stat-title">Active Products</span>
+                  <div class="stat-icon products"><i data-lucide="layers"></i></div>
+                </div>
+                <div class="stat-value" id="stat-active-products">0</div>
+                <p class="stat-desc">All QR codes active</p>
+              </div>
+              <div class="stat-card">
+                <div class="stat-header">
+                  <span class="stat-title">Payout Balance</span>
+                  <div class="stat-icon payout"><i data-lucide="landmark"></i></div>
+                </div>
+                <div class="stat-value" id="stat-payout-balance">₹0.00</div>
+                <p class="stat-desc" id="payout-status-text">Auto-payout: Daily</p>
+              </div>
+            </div>
+
+            <!-- Analytics Chart and Recent Sales -->
+            <div class="dashboard-details">
+              <div class="card chart-card">
+                <h3>Sales Performance</h3>
+                <div class="chart-container">
+                  <!-- Custom SVG Chart -->
+                  <svg id="sales-chart" viewBox="0 0 600 220" width="100%" height="100%">
+                    <defs>
+                      <linearGradient id="chart-grad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="var(--color-indigo)" stop-opacity="0.3"/>
+                        <stop offset="100%" stop-color="var(--color-indigo)" stop-opacity="0"/>
+                      </linearGradient>
+                    </defs>
+                    <g id="chart-grid" stroke="var(--color-border)" stroke-width="1" stroke-dasharray="4,4"></g>
+                    <path id="chart-area" fill="url(#chart-grad)" d=""></path>
+                    <path id="chart-line" fill="none" stroke="var(--color-indigo)" stroke-width="3" d=""></path>
+                    <g id="chart-dots"></g>
+                    <g id="chart-labels" fill="var(--color-text-muted)" font-size="10" font-family="Inter"></g>
+                  </svg>
+                </div>
+              </div>
+
+              <div class="card recent-orders-card">
+                <h3>Recent Transactions</h3>
+                <div class="table-wrapper">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Order ID</th>
+                        <th>Amount</th>
+                        <th>Payment</th>
+                        <th>Time</th>
+                      </tr>
+                    </thead>
+                    <tbody id="recent-orders-list">
+                      <!-- Rendered by JS -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 2: PRODUCTS -->
+          <div class="tab-pane" id="tab-products">
+            <div class="pane-header">
+              <h2>Product Inventory</h2>
+              <div class="header-actions">
+                <button class="btn btn-secondary" id="btn-import-csv">
+                  <i data-lucide="file-spreadsheet"></i> Bulk CSV Import
+                </button>
+                <button class="btn btn-primary" id="btn-add-product">
+                  <i data-lucide="plus"></i> Add Product
+                </button>
+              </div>
+            </div>
+
+            <div class="card inventory-card">
+              <div class="inventory-filters">
+                <div class="search-box">
+                  <i data-lucide="search"></i>
+                  <input type="text" id="inventory-search" placeholder="Search products by name or SKU...">
+                </div>
+              </div>
+
+              <div class="table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th>SKU</th>
+                      <th>Price</th>
+                      <th>GST Tax</th>
+                      <th>Stock</th>
+                      <th>QR Payload</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="inventory-list">
+                    <!-- Rendered by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 3: QR EXPORTER -->
+          <div class="tab-pane" id="tab-qr-exporter">
+            <div class="pane-header">
+              <h2>QR Sheet Exporter</h2>
+              <div class="header-actions">
+                <div class="select-wrapper">
+                  <select id="qr-layout-select">
+                    <option value="grid-3x6">3x6 Sheet (18 QRs per page)</option>
+                    <option value="grid-2x4">2x4 Shelf Tags (8 QRs per page)</option>
+                    <option value="grid-4x8">4x8 Mini-Labels (32 QRs per page)</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary" id="btn-download-pdf">
+                  <i data-lucide="download"></i> Download PDF Sheet
+                </button>
+              </div>
+            </div>
+
+            <p class="tab-intro">Select the product labels layout above, then click **Download PDF Sheet** to export clean, high-resolution QR tags. Check the preview below to see how it will look on paper.</p>
+
+            <div class="card qr-preview-card">
+              <h3>PDF Sheet Layout Preview</h3>
+              <div class="qr-sheet-preview" id="qr-sheet-preview-container">
+                <!-- Rendered Dynamically by JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 4: PAYOUTS -->
+          <div class="tab-pane" id="tab-payouts">
+            <div class="pane-header">
+              <h2>Payout Settings & Ledger</h2>
+              <button class="btn btn-primary" id="btn-instant-payout">
+                <i data-lucide="send"></i> Instant Payout
+              </button>
+            </div>
+
+            <div class="payout-grid">
+              <div class="card payout-settings-card">
+                <h3>Payout Settings</h3>
+                <form id="payout-settings-form">
+                  <div class="form-group">
+                    <label for="payout-upi">UPI ID for Payouts</label>
+                    <input type="text" id="payout-upi" placeholder="merchant@upi" value="supermart@oksbi">
+                  </div>
+                  <div class="form-group">
+                    <label for="payout-bank">Bank Account Number</label>
+                    <input type="text" id="payout-bank" placeholder="Account Number" value="5010048192837">
+                  </div>
+                  <div class="form-group">
+                    <label for="payout-ifsc">IFSC Code</label>
+                    <input type="text" id="payout-ifsc" placeholder="IFSC Code" value="HDFC0000241">
+                  </div>
+                  <div class="form-group">
+                    <label for="payout-schedule">Payout Schedule</label>
+                    <select id="payout-schedule">
+                      <option value="daily">Daily Auto-Transfer (8:00 PM)</option>
+                      <option value="weekly">Weekly Auto-Transfer (Mondays)</option>
+                      <option value="manual">Manual Request Only</option>
+                    </select>
+                  </div>
+                  <button type="submit" class="btn btn-secondary w-full">Save Details</button>
+                </form>
+              </div>
+
+              <div class="card payout-ledger-card">
+                <h3>Payout History</h3>
+                <div class="table-wrapper">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Reference</th>
+                        <th>Method</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody id="payouts-history-list">
+                      <!-- Rendered by JS -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 5: SUBSCRIPTIONS -->
+          <div class="tab-pane" id="tab-subscriptions">
+            <div class="pane-header">
+              <h2>Subscription Plan Management</h2>
+            </div>
+            
+            <div class="current-sub-info-bar card">
+              <div class="info-content">
+                <div class="icon-wrap"><i data-lucide="crown"></i></div>
+                <div>
+                  <h4 id="current-plan-display-name">Pro Shop Plan</h4>
+                  <p class="expires-text" id="current-plan-expiry">Renews on Aug 5, 2026</p>
+                </div>
+              </div>
+              <div class="info-status">
+                <span class="badge active" id="current-plan-status-badge">Active</span>
+                <span class="price-display" id="current-plan-price-display">₹999 / mo</span>
+              </div>
+            </div>
+
+            <div class="subscription-tiers-grid">
+              <!-- Tier 1 -->
+              <div class="tier-card" data-tier="free">
+                <div class="tier-badge">Starter</div>
+                <h3>Trial Sandbox</h3>
+                <p class="price">₹0<span>/ forever</span></p>
+                <ul class="features">
+                  <li>Up to 5 active products</li>
+                  <li>Basic QR sheets (8 tags max)</li>
+                  <li>Local simulator testing</li>
+                  <li>Manual payouts (24-48h)</li>
+                </ul>
+                <button class="btn btn-secondary btn-tier-action" data-tier="free">Downgrade</button>
+              </div>
+
+              <!-- Tier 2 -->
+              <div class="tier-card active" data-tier="pro">
+                <div class="tier-badge popular">Popular</div>
+                <h3>Pro Shop</h3>
+                <p class="price">₹999<span>/ month</span></p>
+                <ul class="features">
+                  <li>Unlimited products</li>
+                  <li>All QR label layouts</li>
+                  <li>Dynamic camera scanner</li>
+                  <li>Instant UPI auto-payouts</li>
+                  <li>Custom invoice PDF branding</li>
+                </ul>
+                <button class="btn btn-primary btn-tier-action" data-tier="pro" disabled>Current Plan</button>
+              </div>
+
+              <!-- Tier 3 -->
+              <div class="tier-card" data-tier="enterprise">
+                <div class="tier-badge">Enterprise</div>
+                <h3>Mega Retailer</h3>
+                <p class="price">₹2,999<span>/ month</span></p>
+                <ul class="features">
+                  <li>Multi-outlet store management</li>
+                  <li>Custom domain integration</li>
+                  <li>Advanced sales analytics</li>
+                  <li>24/7 Priority support manager</li>
+                  <li>API webhooks for ERP</li>
+                </ul>
+                <button class="btn btn-secondary btn-tier-action" data-tier="enterprise">Upgrade</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 6: SETTINGS -->
+          <div class="tab-pane" id="tab-settings">
+            <div class="pane-header">
+              <h2>Store Configuration Settings</h2>
+            </div>
+
+            <div class="card settings-card">
+              <form id="store-settings-form">
+                <div class="settings-grid">
+                  <div class="form-group">
+                    <label for="store-name">Store Name</label>
+                    <input type="text" id="store-name" value="SuperMart Express">
+                  </div>
+                  <div class="form-group">
+                    <label for="store-contact">Contact Phone</label>
+                    <input type="text" id="store-contact" value="+91 98765 43210">
+                  </div>
+                  <div class="form-group">
+                    <label for="store-address">Store Address</label>
+                    <input type="text" id="store-address" value="Sector 62, Noida, UP, India">
+                  </div>
+                  <div class="form-group">
+                    <label for="store-currency">Currency</label>
+                    <select id="store-currency">
+                      <option value="INR">INR (₹)</option>
+                      <option value="USD">USD ($)</option>
+                      <option value="EUR">EUR (€)</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="store-gstin">GSTIN (KYC Verification)</label>
+                    <input type="text" id="store-gstin" value="09AAAAA1111A1Z1">
+                  </div>
+                  <div class="form-group">
+                    <label for="store-receipt-msg">Receipt Footer Message</label>
+                    <input type="text" id="store-receipt-msg" value="Thank you for shopping with us! Please come again.">
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary mt-4">Save Store Settings</button>
+              </form>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- RIGHT PANEL: CUSTOMER MOBILE SIMULATOR -->
+    <aside class="simulator-panel">
+      <div class="smartphone">
+        <!-- Physical features -->
+        <div class="speaker"></div>
+        <div class="dynamic-island"></div>
+        <div class="side-button power"></div>
+        <div class="side-button volume-up"></div>
+        <div class="side-button volume-down"></div>
+
+        <!-- Phone screen -->
+        <div class="phone-screen">
+          <!-- Status Bar -->
+          <header class="phone-status-bar">
+            <div class="status-time" id="phone-time">19:47</div>
+            <div class="status-icons">
+              <i data-lucide="wifi" class="icon-xs"></i>
+              <i data-lucide="signal" class="icon-xs"></i>
+              <div class="battery-icon">
+                <span class="battery-level"></span>
+              </div>
+            </div>
+          </header>
+
+          <!-- Smartphone Internal Layout -->
+          <div class="phone-body">
+            <!-- Dynamic Sub-Header (Store Name) -->
+            <div class="phone-app-header">
+              <div class="flex items-center gap-2">
+                <i data-lucide="shopping-bag" class="text-indigo"></i>
+                <div>
+                  <h4 id="phone-store-name">SuperMart Express</h4>
+                  <p class="phone-subtitle">Self-Checkout Portal</p>
+                </div>
+              </div>
+              <div class="cart-indicator" id="phone-cart-icon-btn">
+                <i data-lucide="shopping-cart"></i>
+                <span class="badge" id="phone-cart-badge">0</span>
+              </div>
+            </div>
+
+            <!-- VIEW 1: HOME / CAMERA SCANNER SCREEN -->
+            <div class="phone-view active" id="phone-view-scan">
+              <div class="scanner-container">
+                <div class="scanner-viewfinder">
+                  <div class="scanner-laser"></div>
+                  <!-- Camera Element -->
+                  <video id="scanner-video" autoplay playsinline muted></video>
+                  <canvas id="scanner-canvas" style="display: none;"></canvas>
+
+                  <!-- Scanner Status Text Overlay -->
+                  <div class="scanner-overlay" id="scanner-overlay-status">
+                    <i data-lucide="camera"></i>
+                    <p>Align product QR code to scan</p>
+                    <button class="btn btn-secondary btn-xs mt-2" id="btn-toggle-camera">Start Live Camera</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Fallback Selector for Desktop Testing -->
+              <div class="scanner-fallback-card">
+                <p class="fallback-title"><i data-lucide="mouse-pointer" class="icon-xs"></i> Testing on Desktop?</p>
+                <p class="fallback-desc">Select a product below to simulate a camera scan:</p>
+                <div class="flex gap-2 mt-2">
+                  <div class="select-wrapper flex-1">
+                    <select id="scan-simulator-select">
+                      <option value="">-- Choose Product --</option>
+                      <!-- Rendered dynamically -->
+                    </select>
+                  </div>
+                  <button class="btn btn-primary" id="btn-simulate-scan">Scan</button>
+                </div>
+              </div>
+
+              <div class="phone-instructions">
+                <p><strong>Instructions:</strong> Scan any product QR code in the store to add it to your cart, modify the quantity, and pay instantly via UPI.</p>
+              </div>
+            </div>
+
+            <!-- VIEW 2: CART SCREEN -->
+            <div class="phone-view" id="phone-view-cart">
+              <div class="phone-view-header">
+                <button class="phone-back-btn" id="cart-back-btn"><i data-lucide="chevron-left"></i> Scanner</button>
+                <h3>Shopping Cart</h3>
+              </div>
+
+              <div class="cart-items-container" id="phone-cart-items-list">
+                <!-- Rendered dynamically -->
+              </div>
+
+              <!-- Promo Code Input -->
+              <div class="promo-container">
+                <input type="text" id="promo-input" placeholder="Enter coupon (e.g. SAVE10)">
+                <button class="btn btn-secondary" id="btn-apply-promo">Apply</button>
+              </div>
+              <p class="promo-feedback" id="promo-feedback-text"></p>
+
+              <!-- Bill Breakdown -->
+              <div class="bill-breakdown-card">
+                <div class="breakdown-row">
+                  <span>Subtotal</span>
+                  <span id="cart-subtotal">₹0.00</span>
+                </div>
+                <div class="breakdown-row">
+                  <span>GST Tax Breakdown</span>
+                  <span id="cart-tax">₹0.00</span>
+                </div>
+                <div class="breakdown-row discount" id="cart-discount-row" style="display: none;">
+                  <span>Discount Applied</span>
+                  <span id="cart-discount">-₹0.00</span>
+                </div>
+                <hr>
+                <div class="breakdown-row total">
+                  <span>Grand Total</span>
+                  <span id="cart-total">₹0.00</span>
+                </div>
+              </div>
+
+              <div class="cart-actions">
+                <button class="btn btn-primary w-full" id="btn-proceed-checkout">
+                  Proceed to Payment <i data-lucide="arrow-right" class="icon-sm"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- VIEW 3: UPI PAYMENT GATEWAY -->
+            <div class="phone-view" id="phone-view-checkout">
+              <div class="phone-view-header">
+                <button class="phone-back-btn" id="checkout-back-btn"><i data-lucide="chevron-left"></i> Cart</button>
+                <h3>UPI Secure Payment</h3>
+              </div>
+
+              <div class="upi-pay-card">
+                <p class="upi-amount-label">Amount to Pay</p>
+                <h2 class="upi-amount-val" id="checkout-pay-amount">₹0.00</h2>
+                
+                <!-- Merchant UPI QR Render -->
+                <div class="upi-qr-box">
+                  <div class="upi-qr-inner">
+                    <canvas id="upi-payment-qrcode-canvas"></canvas>
+                  </div>
+                </div>
+
+                <div class="upi-info">
+                  <p class="merchant-name"><strong id="upi-store-name">SuperMart Express</strong></p>
+                  <p class="upi-id-label">UPI ID: <span id="upi-store-id">supermart@oksbi</span></p>
+                </div>
+              </div>
+
+              <div class="payment-instructions">
+                <p class="text-center text-xs text-muted"><i data-lucide="lock" class="icon-xs inline-block"></i> End-to-end encrypted transactions via NPCI UPI protocol</p>
+              </div>
+
+              <div class="checkout-actions">
+                <button class="btn btn-success w-full" id="btn-complete-payment">
+                  <i data-lucide="shield-check"></i> Complete Mock UPI Payment
+                </button>
+              </div>
+            </div>
+
+            <!-- VIEW 4: PAYMENT SUCCESS & RECEIPT -->
+            <div class="phone-view" id="phone-view-receipt">
+              <div class="receipt-success-graphic">
+                <div class="success-ring animate-pop">
+                  <i data-lucide="check"></i>
+                </div>
+                <h3>Payment Successful!</h3>
+                <p class="ref-no" id="receipt-ref-no">TXN-983108481283</p>
+              </div>
+
+              <div class="receipt-details-card">
+                <div class="receipt-row">
+                  <span>Store:</span>
+                  <span id="receipt-store-name">SuperMart Express</span>
+                </div>
+                <div class="receipt-row">
+                  <span>Date/Time:</span>
+                  <span id="receipt-datetime">July 5, 2026, 7:47 PM</span>
+                </div>
+                <div class="receipt-row">
+                  <span>Total Paid:</span>
+                  <span class="total-paid" id="receipt-total-paid">₹0.00</span>
+                </div>
+                <div class="receipt-row">
+                  <span>Payment Mode:</span>
+                  <span>UPI Mobile Gateway</span>
+                </div>
+              </div>
+
+              <div class="receipt-actions">
+                <button class="btn btn-secondary w-full" id="btn-download-receipt-pdf">
+                  <i data-lucide="download"></i> Download Invoice PDF
+                </button>
+                <button class="btn btn-primary w-full mt-2" id="btn-restart-scanner">
+                  <i data-lucide="qr-code"></i> Scan Another Item
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Phone Home Indicator Bar -->
+          <footer class="phone-home-bar"></footer>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- MODAL: ADD/EDIT PRODUCT -->
+  <div class="modal-overlay" id="modal-product">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-product-title">Add New Product</h3>
+        <button class="modal-close" id="btn-close-product-modal"><i data-lucide="x"></i></button>
+      </div>
+      <form id="product-form">
+        <input type="hidden" id="form-product-id">
+        <div class="form-group">
+          <label for="form-product-name">Product Name *</label>
+          <input type="text" id="form-product-name" required placeholder="e.g. Classic Blend Coffee">
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="form-product-sku">SKU *</label>
+            <input type="text" id="form-product-sku" required placeholder="e.g. COF-CLA-250">
+          </div>
+          <div class="form-group flex-1">
+            <label for="form-product-price">Price (INR) *</label>
+            <input type="number" step="0.01" id="form-product-price" required placeholder="e.g. 350.00">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="form-product-tax">GST Rate (%) *</label>
+            <select id="form-product-tax">
+              <option value="0">0% Exempt</option>
+              <option value="5">5% GST</option>
+              <option value="12">12% GST</option>
+              <option value="18" selected>18% GST</option>
+              <option value="28">28% GST</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label for="form-product-stock">Stock Quantity *</label>
+            <input type="number" id="form-product-stock" required placeholder="e.g. 50" value="50">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="form-product-desc">Description</label>
+          <textarea id="form-product-desc" placeholder="Product details..."></textarea>
+        </div>
+        <div class="modal-footer mt-4">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-product-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-product">Save Product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: BULK CSV IMPORT -->
+  <div class="modal-overlay" id="modal-csv">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Bulk Product Import (CSV)</h3>
+        <button class="modal-close" id="btn-close-csv-modal"><i data-lucide="x"></i></button>
+      </div>
+      <div class="csv-import-body">
+        <p class="modal-intro">Download our sample CSV template, populate your products, and upload it below to bulk-import items.</p>
+        
+        <div class="csv-template-box">
+          <p class="text-xs text-muted mb-2">CSV Column headers format:</p>
+          <code>name,sku,price,taxPercent,stock,description</code>
+          <button class="btn btn-secondary btn-xs mt-2" id="btn-download-csv-template">
+            <i data-lucide="download"></i> Download Template CSV
+          </button>
+        </div>
+
+        <div class="file-upload-area" id="csv-dropzone">
+          <i data-lucide="upload-cloud" class="icon-lg text-muted mb-2"></i>
+          <p>Drag and drop your CSV file here, or click to browse</p>
+          <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+          <button class="btn btn-secondary btn-sm mt-2" id="btn-browse-csv">Select File</button>
+          <p class="selected-file-name" id="csv-file-status"></p>
+        </div>
+      </div>
+      <div class="modal-footer mt-4">
+        <button class="btn btn-secondary" id="btn-cancel-csv-modal">Cancel</button>
+        <button class="btn btn-primary" id="btn-process-csv" disabled>Process Upload</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
